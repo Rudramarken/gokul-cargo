@@ -294,6 +294,8 @@ export interface LrBilty {
   loading_stop?: TripStop;
   unloading_stop?: TripStop;
 }
+
+export interface TripExpense {
   id: string;
   business_id: string;
   trip_id: string;
