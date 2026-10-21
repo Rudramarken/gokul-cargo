@@ -63,7 +63,7 @@ export function TripsPage() {
     if (!businessId) { setLoading(false); return; }
     setLoading(true);
     setLoadError(null);
-    let query = supabase.from('trips').select('*, party:parties!trips_party_id_fkey(*), vehicle:vehicles(*), driver:drivers(*), route:routes(*), truck_owner_party:parties!trips_truck_owner_party_id_fkey(*)', { count: 'exact' }).eq('business_id', businessId);
+    let query = supabase.from('trips').select('*, party:parties!party_id(*), vehicle:vehicles(*), driver:drivers(*), route:routes(*), truck_owner_party:parties!truck_owner_party_id(*)', { count: 'exact' }).eq('business_id', businessId);
     if (search) query = query.or(`trip_number.ilike.%${search}%,origin.ilike.%${search}%,destination.ilike.%${search}%`);
     if (statusFilter) query = query.eq('status', statusFilter);
     if (directionFilter) query = query.eq('journey_direction', directionFilter);
@@ -751,7 +751,7 @@ export function TripDetailPage({ tripId }: { tripId: string }) {
     setLoading(true);
 
     const { data: tripData } = await supabase
-      .from('trips').select('*, party:parties!trips_party_id_fkey(*), consignee:parties!trips_consignee_party_id_fkey(*), vehicle:vehicles(*), driver:drivers(*), route:routes(*), truck_owner_party:parties!trips_truck_owner_party_id_fkey(*)')
+      .from('trips').select('*, party:parties!party_id(*), consignee:parties!consignee_party_id(*), vehicle:vehicles(*), driver:drivers(*), route:routes(*), truck_owner_party:parties!truck_owner_party_id(*)')
       .eq('id', tripId).maybeSingle();
     setTrip(tripData as Trip | null);
 
@@ -771,7 +771,7 @@ export function TripDetailPage({ tripId }: { tripId: string }) {
     const { data: stopData } = await supabase.from('trip_stops').select('*').eq('trip_id', tripId).order('sequence_no');
     setStops((stopData ?? []) as TripStop[]);
 
-      const { data: lrData } = await supabase.from('lr_bilties').select('*, loading_stop:trip_stops!lr_bilties_loading_stop_id_fkey(*), unloading_stop:trip_stops!lr_bilties_unloading_stop_id_fkey(*)').eq('trip_id', tripId).order('bilty_date');
+      const { data: lrData } = await supabase.from('lr_bilties').select('*, loading_stop:trip_stops!loading_stop_id(*), unloading_stop:trip_stops!unloading_stop_id(*)').eq('trip_id', tripId).order('bilty_date');
       setLrBilties(lrData ?? []);
 
     // Load LR expenses for all linked LR/Bilties

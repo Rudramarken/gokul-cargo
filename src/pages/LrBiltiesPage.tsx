@@ -43,7 +43,7 @@ export function LrBiltiesPage() {
     if (!businessId) { setLoading(false); return; }
     setLoading(true);
     let query = supabase.from('lr_bilties')
-      .select('*, trip:trips(*), consignor_party:parties!lr_bilties_consignor_party_id_fkey(*), consignee_party:parties!lr_bilties_consignee_party_id_fkey(*), transporter_vehicle:vehicles(*), transporter_driver:drivers(*)', { count: 'exact' })
+      .select('*, trip:trips(*), consignor_party:parties!consignor_party_id(*), consignee_party:parties!consignee_party_id(*), transporter_vehicle:vehicles(*), transporter_driver:drivers(*)', { count: 'exact' })
       .eq('business_id', businessId);
     if (search) query = query.or(`lr_number.ilike.%${search}%`);
     if (statusFilter) query = query.eq('document_status', statusFilter);
