@@ -6,8 +6,10 @@ import { logAudit, createLedgerEntry, reverseLedgerEntry } from '@/lib/audit';
 import { TripExpense, TripAdvance, Trip, Party, Driver, ExpenseCategory, PaidByType, RecoveryStatus, RecipientType } from '@/types/database';
 import { Button, Input, Select, Textarea, Modal, Badge, Card, PageHeader, EmptyState, LoadingSpinner, ConfirmDialog, Pagination } from '@/components/ui';
 import { formatCurrency, formatDate, downloadCSV, todayISODate } from '@/lib/format';
-import { Receipt, Plus, Search, Edit2, Download, RotateCcw, Wallet } from 'lucide-react';
+import { Receipt, Plus, Search, CreditCard as Edit2, Download, RotateCcw, Wallet } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useBankAccounts, updateAccountBalance } from '@/hooks/useBankAccounts';
+import { useBankAccounts, updateAccountBalance } from '@/hooks/useBankAccounts';
 
 const PAGE_SIZE = 15;
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['fuel', 'toll', 'loading', 'unloading', 'driver', 'maintenance', 'food', 'repairs', 'other'];
@@ -365,7 +367,9 @@ function AdvanceFormModal({ open, onClose, advance, presetTripId, onSave }: { op
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [trips, setTrips] = useState<Trip[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const { accounts } = useBankAccounts(true);
   const [parties, setParties] = useState<Party[]>([]);
+  const { accounts } = useBankAccounts(true);
 
   useEffect(() => {
     if (!businessId || !open) return;
@@ -443,12 +447,16 @@ function AdvanceFormModal({ open, onClose, advance, presetTripId, onSave }: { op
           recipient_party_id: formData.recipient_party_id ?? null,
           recipient_name: formData.recipient_name ?? null,
           amount: Number(formData.amount),
+          account_id: formData.account_id ?? null,
           payment_method: formData.payment_method ?? null,
           reference_number: formData.reference_number ?? null,
+          account_id: formData.account_id ?? null,
           notes: formData.notes ?? null,
+        if (formData.account_id) { await updateAccountBalance(formData.account_id, -Number(formData.amount)); }
           created_by: user?.id ?? null,
         }).select('*').maybeSingle();
         if (error) throw error;
+        if (formData.account_id) { await updateAccountBalance(formData.account_id, -Number(formData.amount)); }
 
         // Create a single ledger entry (driver advance) linked to a party if available
         let ledgerEntryId: string | null = null;
@@ -519,10 +527,18 @@ function AdvanceFormModal({ open, onClose, advance, presetTripId, onSave }: { op
             <Input label="Recipient Name" value={formData.recipient_name ?? ''} onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })} placeholder="Recipient name" />
           </>
         )}
+        <Select label="Cash / Bank Account" value={formData.account_id ?? ''} onChange={(e) => setFormData({ ...formData, account_id: e.target.value || null })}>
+          <option value="">— No specific account —</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
+        </Select>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="Amount (₹)" type="number" step="0.01" required error={errors.amount} value={String(formData.amount ?? 0)} onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })} />
           <Input label="Payment Method" value={formData.payment_method ?? ''} onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })} placeholder="Cash, UPI, Bank, etc." />
         </div>
+        <Select label="Cash / Bank Account" value={formData.account_id ?? ''} onChange={(e) => setFormData({ ...formData, account_id: e.target.value || null })}>
+          <option value="">— No specific account —</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
+        </Select>
         <Input label="Reference Number" value={formData.reference_number ?? ''} onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })} placeholder="Cheque no, UPI ref, etc." />
         <Textarea label="Notes" value={formData.notes ?? ''} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
         <div className="flex justify-end gap-3 pt-2">

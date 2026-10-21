@@ -329,10 +329,14 @@ export interface TripAdvance {
   payment_method: string | null;
   reference_number: string | null;
   ledger_entry_id: string | null;
+  account_id: string | null;
+  account_id: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  account?: BankAccount;
   trip?: Trip;
+  account?: BankAccount;
 }
 
 export interface LrExpense {
@@ -364,12 +368,16 @@ export interface DriverSalaryRecord {
   amount_paid: number;
   payment_method: string | null;
   reference_number: string | null;
+  account_id: string | null;
   notes: string | null;
   status: SalaryStatus;
+  account_id: string | null;
   created_by: string | null;
+  account?: BankAccount;
   created_at: string;
   updated_at: string;
   driver?: Driver;
+  account?: BankAccount;
 }
 
 export interface CustomerBill {
@@ -418,16 +426,20 @@ export interface Payment {
   payment_method: string | null;
   reference_number: string | null;
   bank_name: string | null;
+  account_id: string | null;
   account_holder: string | null;
   account_number: string | null;
   ifsc_code: string | null;
   upi_id: string | null;
+  account_id: string | null;
   notes: string | null;
+  account?: BankAccount;
   is_reversed: boolean;
   created_by: string | null;
   created_at: string;
   party?: Party;
   on_behalf_of_party?: Party;
+  account?: BankAccount;
   allocations?: PaymentAllocation[];
 }
 
@@ -445,17 +457,21 @@ export interface TruckOwnerSettlement {
   id: string;
   business_id: string;
   truck_owner_party_id: string;
+  account_id: string | null;
   trip_id: string;
   settlement_date: string;
   agreed_amount: number;
   paid_amount: number;
   balance_amount: number;
+  account?: BankAccount;
   status: SettlementStatus;
+  account_id: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
   truck_owner_party?: Party;
   trip?: Trip;
+  account?: BankAccount;
 }
 
 export interface LedgerEntry {
@@ -486,10 +502,46 @@ export interface AuditLog {
   created_at: string;
 }
 
+export type AccountType = 'cash' | 'bank';
+
+export interface BankAccount {
+  id: string;
+  business_id: string;
+  account_name: string;
+  account_type: AccountType;
+  bank_name: string | null;
+  account_number: string | null;
+  ifsc_code: string | null;
+  upi_id: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DocumentSequence {
   id: string;
   business_id: string;
   doc_type: 'trip' | 'lr' | 'bill';
   last_number: number;
   prefix: string;
+}
+
+export type AccountType = 'cash' | 'bank';
+
+export interface BankAccount {
+  id: string;
+  business_id: string;
+  account_name: string;
+  account_type: AccountType;
+  bank_name: string | null;
+  account_number: string | null;
+  ifsc_code: string | null;
+  upi_id: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

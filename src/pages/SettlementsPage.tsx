@@ -8,6 +8,7 @@ import { Button, Input, Select, Textarea, Modal, Card, PageHeader, EmptyState, L
 import { formatCurrency, formatDate, downloadCSV, todayISODate } from '@/lib/format';
 import { Wallet, Plus, Search, Eye, Download, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useBankAccounts, updateAccountBalance } from '@/hooks/useBankAccounts';
 
 const PAGE_SIZE = 15;
 
@@ -84,6 +85,7 @@ function SettlementFormModal({ open, onClose, onSaved }: { open: boolean; onClos
   const [trips, setTrips] = useState<(Trip & { truck_owner_party?: Party })[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
   const [tripsError, setTripsError] = useState<string | null>(null);
+  const { accounts } = useBankAccounts(true);
 
   useEffect(() => {
     if (!businessId || !open) return;
@@ -129,6 +131,9 @@ function SettlementFormModal({ open, onClose, onSaved }: { open: boolean; onClos
     try {
       const { data, error } = await supabase.from('truck_owner_settlements').insert({ ...formData, business_id: businessId, balance_amount: balance, status }).select('*').maybeSingle();
       if (error) throw error;
+      if (formData.account_id && Number(formData.paid_amount) > 0) {
+        await updateAccountBalance(formData.account_id, -Number(formData.paid_amount));
+      }
       await logAudit(businessId, user?.id ?? null, 'settlement_create', 'truck_owner_settlement', data.id, { trip_id: formData.trip_id });
       if (Number(formData.paid_amount) > 0) {
         await createLedgerEntry(businessId, formData.truck_owner_party_id!, formData.settlement_date!, 'truck_owner_payment', Number(formData.paid_amount), 0, `Truck owner payment for trip`, 'settlement', data.id, user?.id ?? null);
@@ -163,6 +168,10 @@ function SettlementFormModal({ open, onClose, onSaved }: { open: boolean; onClos
           <Input label="Paid Amount (₹)" type="number" step="0.01" error={errors.paid_amount} value={String(formData.paid_amount ?? 0)} onChange={(e) => setFormData({ ...formData, paid_amount: Number(e.target.value), balance_amount: Number(formData.agreed_amount ?? 0) - Number(e.target.value) })} />
         </div>
         <Input label="Settlement Date" type="date" value={formData.settlement_date ?? ''} onChange={(e) => setFormData({ ...formData, settlement_date: e.target.value })} />
+        <Select label="Cash / Bank Account" value={formData.account_id ?? ''} onChange={(e) => setFormData({ ...formData, account_id: e.target.value || null })}>
+          <option value="">— No specific account —</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
+        </Select>
         <Textarea label="Notes" value={formData.notes ?? ''} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
         <div className="flex justify-end gap-3 pt-2"><Button variant="outline" onClick={onClose} type="button">Cancel</Button><Button type="submit" loading={saving}>Create Settlement</Button></div>
       </form>
@@ -176,7 +185,9 @@ function SettlementDetailModal({ settlement, onClose, onUpdated }: { settlement:
   const [trip, setTrip] = useState<Trip | null>(null);
   const [owner, setOwner] = useState<Party | null>(null);
   const [payAmount, setPayAmount] = useState(0);
+  const [payAccountId, setPayAccountId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const { accounts } = useBankAccounts(true);
 
   useEffect(() => {
     supabase.from('trips').select('*').eq('id', settlement.trip_id).maybeSingle().then(({ data }) => setTrip(data as Trip | null));
@@ -189,8 +200,9 @@ function SettlementDetailModal({ settlement, onClose, onUpdated }: { settlement:
     const newPaid = Number(settlement.paid_amount) + payAmount;
     const newBalance = Number(settlement.agreed_amount) - newPaid;
     const newStatus: SettlementStatus = newBalance <= 0 ? 'settled' : 'partially_settled';
-    const { error } = await supabase.from('truck_owner_settlements').update({ paid_amount: newPaid, balance_amount: newBalance, status: newStatus, updated_at: new Date().toISOString() }).eq('id', settlement.id);
+    const { error } = await supabase.from('truck_owner_settlements').update({ paid_amount: newPaid, balance_amount: newBalance, status: newStatus, account_id: payAccountId || null, updated_at: new Date().toISOString() }).eq('id', settlement.id);
     if (error) { showToast(error.message, 'error'); setSaving(false); return; }
+    if (payAccountId) { await updateAccountBalance(payAccountId, -payAmount); }
     await createLedgerEntry(businessId!, settlement.truck_owner_party_id, todayISODate(), 'truck_owner_payment', payAmount, 0, `Truck owner payment for trip ${trip?.trip_number ?? ''}`, 'settlement', settlement.id, user?.id ?? null);
     await logAudit(businessId!, user?.id ?? null, 'settlement_payment', 'truck_owner_settlement', settlement.id, { amount: payAmount });
     showToast('Payment recorded');
@@ -217,6 +229,10 @@ function SettlementDetailModal({ settlement, onClose, onUpdated }: { settlement:
           <div className="border-t border-navy-100 pt-4">
             <h3 className="text-sm font-semibold text-navy-700 mb-2">Record Additional Payment</h3>
             <div className="flex gap-2"><input type="number" step="0.01" placeholder={`Max: ${formatCurrency(settlement.balance_amount)}`} value={String(payAmount || '')} onChange={(e) => setPayAmount(Number(e.target.value))} className="flex-1 px-3 py-2 text-sm border border-navy-200 rounded-lg outline-none" /><Button loading={saving} onClick={handlePayment}>Record Payment</Button></div>
+            <select value={payAccountId} onChange={(e) => setPayAccountId(e.target.value)} className="w-full px-3 py-2 text-sm border border-navy-200 rounded-lg outline-none cursor-pointer mt-2">
+              <option value="">— No specific account —</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
+            </select>
           </div>
         )}
       </div>
