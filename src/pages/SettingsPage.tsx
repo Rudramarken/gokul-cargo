@@ -95,13 +95,15 @@ function BankAccountsSection({ businessId, accounts, loading, refetch, userId }:
   const [confirmDelete, setConfirmDelete] = useState<BankAccount | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState<{ account_name: string; account_type: AccountType; bank_name: string; account_number: string; ifsc_code: string; upi_id: string; opening_balance: string; is_active: boolean }>({
-    account_name: '', account_type: 'bank', bank_name: '', account_number: '', ifsc_code: '', upi_id: '', opening_balance: '0', is_active: true,
+  const [form, setForm] = useState<{ account_name: string; account_type: AccountType; bank_name: string; account_holder: string; account_number: string; ifsc_code: string; branch: string; upi_id: string; opening_balance: string; is_active: boolean }>({
+    account_name: '', account_type: 'bank', bank_name: '', account_holder: '', account_number: '', ifsc_code: '', branch: '', upi_id: '', opening_balance: '0', is_active: true,
   });
+
+  const emptyForm = { account_name: '', account_type: 'bank' as AccountType, bank_name: '', account_holder: '', account_number: '', ifsc_code: '', branch: '', upi_id: '', opening_balance: '0', is_active: true };
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ account_name: '', account_type: 'bank', bank_name: '', account_number: '', ifsc_code: '', upi_id: '', opening_balance: '0', is_active: true });
+    setForm(emptyForm);
     setModalOpen(true);
   };
 
@@ -111,8 +113,10 @@ function BankAccountsSection({ businessId, accounts, loading, refetch, userId }:
       account_name: acct.account_name,
       account_type: acct.account_type,
       bank_name: acct.bank_name ?? '',
+      account_holder: acct.account_holder ?? '',
       account_number: acct.account_number ?? '',
       ifsc_code: acct.ifsc_code ?? '',
+      branch: acct.branch ?? '',
       upi_id: acct.upi_id ?? '',
       opening_balance: String(acct.opening_balance),
       is_active: acct.is_active,
@@ -131,8 +135,10 @@ function BankAccountsSection({ businessId, accounts, loading, refetch, userId }:
         account_name: form.account_name.trim(),
         account_type: form.account_type,
         bank_name: form.bank_name.trim() || null,
+        account_holder: form.account_holder.trim() || null,
         account_number: form.account_number.trim() || null,
         ifsc_code: form.ifsc_code.trim() || null,
+        branch: form.branch.trim() || null,
         upi_id: form.upi_id.trim() || null,
         opening_balance: Number(form.opening_balance) || 0,
         is_active: form.is_active,
@@ -182,7 +188,7 @@ function BankAccountsSection({ businessId, accounts, loading, refetch, userId }:
                 <div>
                   <p className="text-sm font-medium text-navy-800">{acct.account_name}</p>
                   <p className="text-xs text-navy-400">
-                    {acct.account_type === 'bank' ? `${acct.bank_name ?? 'Bank'}${acct.account_number ? ` · ${acct.account_number}` : ''}` : 'Cash account'}
+                    {acct.account_type === 'bank' ? `${acct.bank_name ?? 'Bank'}${acct.branch ? ` · ${acct.branch}` : ''}${acct.account_number ? ` · ${acct.account_number}` : ''}` : 'Cash account'}
                   </p>
                 </div>
               </div>
@@ -211,12 +217,16 @@ function BankAccountsSection({ businessId, accounts, loading, refetch, userId }:
           </div>
           <Input label="Account Name" required placeholder={form.account_type === 'bank' ? 'e.g. HDFC Current A/c' : 'e.g. Petty Cash Box'} value={form.account_name} onChange={(e) => setForm({ ...form, account_name: e.target.value })} />
           {form.account_type === 'bank' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Bank Name" placeholder="HDFC Bank" value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} />
-              <Input label="Account Number" placeholder="1234567890" value={form.account_number} onChange={(e) => setForm({ ...form, account_number: e.target.value })} />
-              <Input label="IFSC Code" placeholder="HDFC0001234" value={form.ifsc_code} onChange={(e) => setForm({ ...form, ifsc_code: e.target.value.toUpperCase() })} />
-              <Input label="UPI ID (optional)" placeholder="gokul@hdfc" value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value })} />
-            </div>
+            <>
+              <Input label="Account Holder Name" placeholder="Name as per bank records" value={form.account_holder} onChange={(e) => setForm({ ...form, account_holder: e.target.value })} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input label="Bank Name" placeholder="HDFC Bank" value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} />
+                <Input label="Branch" placeholder="MG Road" value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} />
+                <Input label="Account Number" placeholder="1234567890" value={form.account_number} onChange={(e) => setForm({ ...form, account_number: e.target.value })} />
+                <Input label="IFSC Code" placeholder="HDFC0001234" value={form.ifsc_code} onChange={(e) => setForm({ ...form, ifsc_code: e.target.value.toUpperCase() })} />
+                <Input label="UPI ID (optional)" placeholder="gokul@hdfc" value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value })} />
+              </div>
+            </>
           )}
           <Input label="Opening Balance" type="number" step="0.01" disabled={!!editing} value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: e.target.value })} />
           {editing && <p className="text-xs text-navy-400">Opening balance cannot be changed after creation. Current balance is updated automatically as payments are recorded.</p>}

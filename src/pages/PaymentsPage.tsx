@@ -9,7 +9,6 @@ import { formatCurrency, formatDate, downloadCSV, todayISODate } from '@/lib/for
 import { Wallet, Plus, Search, Eye, Download, RotateCcw, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBankAccounts, updateAccountBalance } from '@/hooks/useBankAccounts';
-import { useBankAccounts, updateAccountBalance } from '@/hooks/useBankAccounts';
 
 const PAGE_SIZE = 15;
 
@@ -113,7 +112,6 @@ function PaymentFormModal({ open, onClose, onSaved }: { open: boolean; onClose: 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { accounts } = useBankAccounts(true);
   const [parties, setParties] = useState<Party[]>([]);
-  const { accounts } = useBankAccounts(true);
   const [showBankDetails, setShowBankDetails] = useState(false);
   const [showOnBehalf, setShowOnBehalf] = useState(false);
 
@@ -151,10 +149,6 @@ function PaymentFormModal({ open, onClose, onSaved }: { open: boolean; onClose: 
       if (!showOnBehalf) insertData.on_behalf_of_party_id = null;
       // For third-party collection, ledger goes to the original party (on_behalf_of), not the paying party
       const ledgerPartyId = showOnBehalf && formData.on_behalf_of_party_id ? formData.on_behalf_of_party_id : formData.party_id;
-      if (formData.account_id) {
-        const isReceipt = formData.payment_type === 'customer_receipt';
-        await updateAccountBalance(formData.account_id, isReceipt ? Number(formData.amount) : -Number(formData.amount));
-      }
       const { data, error } = await supabase.from('payments').insert(insertData).select('*').maybeSingle();
       if (error) throw error;
       if (formData.account_id) {
@@ -193,10 +187,6 @@ function PaymentFormModal({ open, onClose, onSaved }: { open: boolean; onClose: 
         {showOnBehalf && (
           <div className="space-y-2 pl-6 border-l-2 border-navy-100">
             <Select label="Original Party (whose outstanding reduces)" required error={errors.on_behalf_of_party_id} value={formData.on_behalf_of_party_id ?? ''} onChange={(e) => setFormData({ ...formData, on_behalf_of_party_id: e.target.value })}>
-        <Select label="Cash / Bank Account" value={formData.account_id ?? ''} onChange={(e) => setFormData({ ...formData, account_id: e.target.value || null })}>
-          <option value="">— No specific account —</option>
-          {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
-        </Select>
               <option value="">Select original party...</option>
               {parties.filter((p) => p.id !== formData.party_id).map((p) => <option key={p.id} value={p.id}>{p.party_name}</option>)}
             </Select>

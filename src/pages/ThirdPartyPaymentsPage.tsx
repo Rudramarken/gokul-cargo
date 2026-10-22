@@ -7,6 +7,7 @@ import { Payment, Party, LrBilty } from '@/types/database';
 import { Button, Input, Select, Textarea, Modal, Badge, Card, PageHeader, EmptyState, LoadingSpinner, ConfirmDialog, Pagination } from '@/components/ui';
 import { formatCurrency, formatDate, downloadCSV, todayISODate } from '@/lib/format';
 import { Users, Plus, Search, Eye, Download, RotateCcw, X } from 'lucide-react';
+import { useBankAccounts, updateAccountBalance } from '@/hooks/useBankAccounts';
 
 const PAGE_SIZE = 15;
 
@@ -185,6 +186,7 @@ function ThirdPartyPaymentFormModal({ open, onClose, onSaved }: { open: boolean;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [parties, setParties] = useState<Party[]>([]);
   const [bilties, setBilties] = useState<LrBilty[]>([]);
+  const { accounts } = useBankAccounts(true);
 
   useEffect(() => {
     if (!businessId || !open) return;
@@ -231,10 +233,15 @@ function ThirdPartyPaymentFormModal({ open, onClose, onSaved }: { open: boolean;
         payment_method: formData.payment_method ?? null,
         reference_number: formData.reference_number ?? null,
         notes: formData.notes ?? null,
+        account_id: formData.account_id || null,
         created_by: user?.id ?? null,
       };
       const { data, error } = await supabase.from('payments').insert(insertData).select('*').maybeSingle();
       if (error) throw error;
+      if (formData.account_id) {
+        const isReceipt = (formData.payment_type ?? 'customer_receipt') === 'customer_receipt';
+        await updateAccountBalance(formData.account_id, isReceipt ? Number(formData.amount) : -Number(formData.amount));
+      }
       // Ledger goes to the ORIGINAL party (on_behalf_of) — only their outstanding reduces
       const isReceipt = (formData.payment_type ?? 'customer_receipt') === 'customer_receipt';
       const payerName = formData.payer_name_manual ?? parties.find((p) => p.id === formData.party_id)?.party_name ?? '—';
@@ -287,6 +294,10 @@ function ThirdPartyPaymentFormModal({ open, onClose, onSaved }: { open: boolean;
           <Input label="Payment Method" value={formData.payment_method ?? ''} onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })} placeholder="Cash, UPI, Bank, Cheque" />
           <Input label="Reference Number" value={formData.reference_number ?? ''} onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })} placeholder="Cheque no, UPI ref, etc." />
         </div>
+        <Select label="Cash / Bank Account" value={formData.account_id ?? ''} onChange={(e) => setFormData({ ...formData, account_id: e.target.value || null })}>
+          <option value="">— No specific account —</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
+        </Select>
         <Textarea label="Notes" value={formData.notes ?? ''} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
         <div className="flex justify-end gap-3 pt-2">
           <Button variant="outline" onClick={onClose} type="button">Cancel</Button>

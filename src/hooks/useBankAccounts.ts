@@ -26,14 +26,17 @@ export async function saveBankAccount(
   businessId: string,
   account: Partial<BankAccount> & { account_name: string; account_type: AccountType }
 ): Promise<BankAccount | null> {
+  const isBank = account.account_type === 'bank';
   const payload: Record<string, unknown> = {
     business_id: businessId,
     account_name: account.account_name,
     account_type: account.account_type,
-    bank_name: account.account_type === 'bank' ? (account.bank_name ?? null) : null,
-    account_number: account.account_type === 'bank' ? (account.account_number ?? null) : null,
-    ifsc_code: account.account_type === 'bank' ? (account.ifsc_code ?? null) : null,
-    upi_id: account.account_type === 'bank' ? (account.upi_id ?? null) : null,
+    bank_name: isBank ? (account.bank_name ?? null) : null,
+    account_holder: isBank ? (account.account_holder ?? null) : null,
+    account_number: isBank ? (account.account_number ?? null) : null,
+    ifsc_code: isBank ? (account.ifsc_code ?? null) : null,
+    branch: isBank ? (account.branch ?? null) : null,
+    upi_id: isBank ? (account.upi_id ?? null) : null,
     opening_balance: account.opening_balance ?? 0,
     current_balance: account.id ? undefined : (account.opening_balance ?? 0),
     is_active: account.is_active ?? true,
