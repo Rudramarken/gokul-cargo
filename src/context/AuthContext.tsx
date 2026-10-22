@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Business, BusinessMember, BusinessSettings, BusinessRole } from '@/types/database';
 
 interface AuthContextType {
@@ -73,6 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
       setSession(session);
@@ -107,11 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadBusinessData]);
 
   const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) return { error: 'Database is not configured. Please contact support.' };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
   };
 
   const signUp = async (email: string, password: string, businessName: string) => {
+    if (!isSupabaseConfigured) return { error: 'Database is not configured. Please contact support.' };
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
     if (!data.user) return { error: 'Sign up failed. Please try again.' };
@@ -147,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
     setBusiness(null);
     setRole(null);

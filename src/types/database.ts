@@ -32,6 +32,26 @@ export type LrExpenseSide = 'consignor' | 'consignee';
 export type StopType = 'loading' | 'unloading' | 'both' | 'intermediate';
 export type StopStatus = 'planned' | 'arrived' | 'completed' | 'skipped';
 
+export type AccountType = 'cash' | 'bank';
+
+export interface BankAccount {
+  id: string;
+  business_id: string;
+  account_name: string;
+  account_type: AccountType;
+  bank_name: string | null;
+  account_holder: string | null;
+  account_number: string | null;
+  ifsc_code: string | null;
+  branch: string | null;
+  upi_id: string | null;
+  opening_balance: number;
+  current_balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export type LedgerEntryType =
   | 'opening_balance'
   | 'customer_bill'
@@ -427,7 +447,6 @@ export interface Payment {
   account_number: string | null;
   ifsc_code: string | null;
   upi_id: string | null;
-  account_id: string | null;
   notes: string | null;
   is_reversed: boolean;
   created_by: string | null;
