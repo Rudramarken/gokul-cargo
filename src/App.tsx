@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { ensureCashAccount } from '@/hooks/useBankAccounts';
 import { ToastProvider } from '@/hooks/useToast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoadingSpinner } from '@/components/ui';
@@ -25,8 +27,12 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { AuditLogPage } from '@/pages/AuditLogPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, businessId } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    if (businessId) ensureCashAccount(businessId);
+  }, [businessId]);
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><LoadingSpinner size="lg" /></div>;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;

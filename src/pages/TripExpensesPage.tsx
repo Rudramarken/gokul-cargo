@@ -263,12 +263,13 @@ export function TripExpensesPage() {
 function ExpenseFormModal({ open, onClose, expense, presetTripId, onSave }: { open: boolean; onClose: () => void; expense: TripExpense | null; presetTripId?: string; onSave: () => void }) {
   const { businessId, user } = useAuth();
   const { showToast } = useToast();
-  const [formData, setFormData] = useState<Partial<TripExpense>>({});
+  const [formData, setFormData] = useState<Partial<TripExpense> & { account_id?: string }>({});
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [trips, setTrips] = useState<Trip[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [bilties, setBilties] = useState<any[]>([]);
+  const { accounts } = useBankAccounts(true);
 
   useEffect(() => {
     if (!businessId || !open) return;
@@ -278,8 +279,8 @@ function ExpenseFormModal({ open, onClose, expense, presetTripId, onSave }: { op
   }, [businessId, open]);
 
   useEffect(() => {
-    if (expense) setFormData(expense);
-    else setFormData({ expense_date: todayISODate(), expense_category: 'fuel', amount: 0, trip_id: presetTripId ?? '', paid_by: 'gokul', recovery_status: 'n/a' });
+    if (expense) setFormData({ ...expense, account_id: (expense as any).account_id ?? '' });
+    else setFormData({ expense_date: todayISODate(), expense_category: 'fuel', amount: 0, trip_id: presetTripId ?? '', paid_by: 'gokul', recovery_status: 'n/a', account_id: '' });
     setErrors({});
   }, [expense, open, presetTripId]);
 
@@ -297,14 +298,17 @@ function ExpenseFormModal({ open, onClose, expense, presetTripId, onSave }: { op
     if (!validate() || !businessId) return;
     setSaving(true);
     try {
+      const accountId = formData.account_id || undefined;
+      const { account_id, ...expenseData } = formData;
       if (expense) {
-        const { error } = await supabase.from('trip_expenses').update(formData).eq('id', expense.id);
+        const { error } = await supabase.from('trip_expenses').update(expenseData).eq('id', expense.id);
         if (error) throw error;
         await logAudit(businessId, user?.id ?? null, 'expense_update', 'trip_expense', expense.id, { amount: formData.amount });
         showToast('Expense updated');
       } else {
-        const { error } = await supabase.from('trip_expenses').insert({ ...formData, business_id: businessId, created_by: user?.id ?? null });
+        const { error } = await supabase.from('trip_expenses').insert({ ...expenseData, business_id: businessId, created_by: user?.id ?? null });
         if (error) throw error;
+        if (accountId) { await updateAccountBalance(accountId, -Number(formData.amount)); }
         await logAudit(businessId, user?.id ?? null, 'expense_create', 'trip_expense', null, { amount: formData.amount });
         showToast('Expense added');
       }
@@ -347,6 +351,10 @@ function ExpenseFormModal({ open, onClose, expense, presetTripId, onSave }: { op
         <Select label="Linked LR/Bilty (optional)" value={formData.lr_bilty_id ?? ''} onChange={(e) => setFormData({ ...formData, lr_bilty_id: e.target.value || null })}>
           <option value="">None</option>
           {bilties.map((b) => <option key={b.id} value={b.id}>{b.lr_number}</option>)}
+        </Select>
+        <Select label="Cash / Bank Account" value={formData.account_id ?? ''} onChange={(e) => setFormData({ ...formData, account_id: e.target.value || null })}>
+          <option value="">— No specific account —</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_name} ({a.account_type})</option>)}
         </Select>
         <Textarea label="Description" value={formData.description ?? ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
         <div className="flex justify-end gap-3 pt-2">
